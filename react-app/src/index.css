@@ -1,0 +1,187 @@
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  font-family: system-ui, Arial;
+}
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.app-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #fff;
+  padding: 12px 18px;
+  border: 6px solid #d22; /* red border like ảnh */
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.logo {
+  font-weight: 700;
+  color: #b00020;
+  text-decoration: none;
+}
+.main-content {
+  padding: 16px;
+  flex: 1;
+}
+.page-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 16px;
+  align-items: start;
+}
+.recorder textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  font-size: 14px;
+}
+.recorder .recorder-controls button {
+  margin-right: 8px;
+}
+.btn-active {
+  background: #ffdcdc;
+}
+.options-panel {
+  border-left: 1px solid #eee;
+  padding-left: 12px;
+}
+.tag-card {
+  position: relative;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.tag-vocab {
+  background: #dff1ff;
+} /* light blue */
+.tag-analysis {
+  background: #e7ffe9;
+} /* light green */
+.tag-translation {
+  background: #f5e8ff;
+} /* light purple */
+.tag-actions {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
+}
+.small-icon {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.pinned {
+  background: #fff8e1;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+.hint {
+  color: #888;
+  font-style: italic;
+  margin-bottom: 8px;
+}
+.error {
+  color: #b00020;
+  margin-bottom: 8px;
+}
+/* Input card (pink) */
+.input-card {
+  position: relative;
+  background: #ffdff0;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.04);
+  margin-bottom: 12px;
+}
+.input-label {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+}
+.input-textarea {
+  width: 100%;
+  min-height: 80px;
+  border: none;
+  resize: vertical;
+  background: transparent;
+  font-size: 16px;
+  outline: none;
+}
+/* controls inside input-card - bottom-right */
+.input-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  display: flex;
+  gap: 8px;
+}
+.icon-btn {
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+}
+.icon-btn.active {
+  background: #ffd0d8;
+}
+/* handle center bottom */
+.card-handle {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -10px;
+  width: 48px;
+  height: 10px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+}
+/* choose options dashed box */
+.choose-box {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 28px 12px;
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.choose-inner {
+  text-align: center;
+  color: #777;
+}
+.choose-inner .plus {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  border: 1px solid #ddd;
+  font-size: 20px;
+}
