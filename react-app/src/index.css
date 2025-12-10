@@ -1,27 +1,25 @@
+/* Reset & base layout */
 html, body, #root {
   height: 100%;
   margin: 0;
-  font-family: system-ui, Arial;
+  font-family: system-ui, Arial, sans-serif;
+  background-color: #fafafa;
 }
-.app {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
+
 .app-root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
+
+/* Header */
 .sticky-header {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: #fff;
+  background: #ffdaeb; /* nền hồng */
+  color: white;         /* chữ trắng */
   padding: 12px 18px;
-  border: 6px solid #d22; /* red border like ảnh */
   border-radius: 6px;
   display: flex;
   justify-content: space-between;
@@ -29,78 +27,82 @@ html, body, #root {
 }
 .logo {
   font-weight: 700;
+  font-size: 20px;
   color: #b00020;
-  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
+
+/* Reset & base layout */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  font-family: system-ui, Arial, sans-serif;
+  background-color: #fafafa;
+}
+
+.app-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #ffdaeb; /* nền hồng */
+  color: white;         /* chữ trắng */
+  padding: 12px 18px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.logo {
+  font-weight: 700;
+  font-size: 20px;
+  color: #b00020;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.logo-btn {
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+}
+
+.header-right button {
+  background: none;
+  border: none;
+  color: #b00020;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Main content */
 .main-content {
   padding: 16px;
   flex: 1;
 }
+
+/* Layout: Recorder + OptionsPanel */
 .page-layout {
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 16px;
-  align-items: start;
-}
-.recorder textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 8px;
-  font-size: 14px;
-}
-.recorder .recorder-controls button {
-  margin-right: 8px;
-}
-.btn-active {
-  background: #ffdcdc;
-}
-.options-panel {
-  border-left: 1px solid #eee;
-  padding-left: 12px;
-}
-.tag-card {
-  position: relative;
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 12px;
-}
-.tag-vocab {
-  background: #dff1ff;
-} /* light blue */
-.tag-analysis {
-  background: #e7ffe9;
-} /* light green */
-.tag-translation {
-  background: #f5e8ff;
-} /* light purple */
-.tag-actions {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 24px;
 }
-.small-icon {
-  border: none;
-  background: transparent;
-  cursor: pointer;
+
+/* Recorder */
+.recorder {
+  width: 100%;
 }
-.pinned {
-  background: #fff8e1;
-  padding: 10px;
-  border-radius: 8px;
-  margin-bottom: 10px;
-}
-.hint {
-  color: #888;
-  font-style: italic;
-  margin-bottom: 8px;
-}
-.error {
-  color: #b00020;
-  margin-bottom: 8px;
-}
-/* Input card (pink) */
+
 .input-card {
   position: relative;
   background: #ffdff0;
@@ -109,6 +111,7 @@ html, body, #root {
   box-shadow: 0 6px 10px rgba(0, 0, 0, 0.04);
   margin-bottom: 12px;
 }
+
 .input-label {
   position: absolute;
   top: -12px;
@@ -120,34 +123,54 @@ html, body, #root {
   font-weight: 600;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
 }
+
 .input-textarea {
-  width: 100%;
-  min-height: 80px;
-  border: none;
-  resize: vertical;
-  background: transparent;
+  border: 2px solid hotpink;
+  background-color: white;
+  color: black;
+  padding: 10px;
+  border-radius: 6px;
   font-size: 16px;
-  outline: none;
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  box-sizing: border-box;
 }
-/* controls inside input-card - bottom-right */
+
 .input-controls {
   position: absolute;
   right: 12px;
-  bottom: 8px;
+  bottom: 8px; /* moved to bottom-right */
   display: flex;
   gap: 8px;
+  z-index: 10;
 }
+
 .icon-btn {
   border: none;
-  background: rgba(0, 0, 0, 0.05);
+  background: white;
   border-radius: 6px;
   padding: 6px;
+  font-size: 16px;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
+
 .icon-btn.active {
   background: #ffd0d8;
 }
-/* handle center bottom */
+
+/* ensure the textarea has space so the overlay icons don't hide content */
+.input-textarea {
+  padding-right: 90px; /* leave room for buttons */
+  padding-bottom: 28px; /* leave room for bottom buttons */
+}
+
+.input-label {
+  z-index: 12;
+  color: black;
+}
+
 .card-handle {
   position: absolute;
   left: 50%;
@@ -159,29 +182,481 @@ html, body, #root {
   border-radius: 10px;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
 }
-/* choose options dashed box */
-.choose-box {
+
+/* OptionsPanel */
+.options-panel {
   border: 2px dashed #ccc;
+  border-radius: 12px;
+  padding: 20px;
+  background-color: #fff;
+}
+
+.options-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.options-controls button {
+  padding: 8px 14px;
+  background-color: #ff69b4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.loading {
+  font-style: italic;
+  color: #555;
+}
+
+.error {
+  color: #b00020;
+  margin-bottom: 8px;
+}
+
+.hint {
+  color: #888;
+  font-style: italic;
+  margin-bottom: 8px;
+}
+
+.pinned {
+  background: #fff8e1;
+  padding: 10px;
   border-radius: 8px;
-  padding: 28px 12px;
+  margin-bottom: 10px;
+}
+
+/* Tags */
+.tags-list {
+  margin-top: 12px;
+}
+
+.tag-card {
+  position: relative;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.tag-vocab {
+  background: #dff1ff;
+}
+
+.tag-analysis {
+  background: #e7ffe9;
+}
+
+.tag-translation {
+  background: #f5e8ff;
+}
+
+.tag-actions {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.small-icon {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* Choose box */
+.choose-box {
+  border: none;
+  border-radius: 8px;
+  padding: 60px 20px;
   margin-top: 14px;
   display: flex;
   justify-content: center;
   align-items: center;
+  position: relative; /* needed so popup can be absolutely positioned inside */
+  cursor: pointer;
+  min-height: 120px;
 }
+
 .choose-inner {
   text-align: center;
   color: #777;
+  font-size: 14px;
 }
+
 .choose-inner .plus {
-  width: 38px;
-  height: 38px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 6px;
+  border: 1px solid #ddd;
+  font-size: 18px;
+}
+
+/* Options popup backdrop + panel */
+.options-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+
+.options-popup {
+  position: absolute; /* anchor inside choose-box */
+  transform: translate(-50%, -12px); /* show just below the click point, adjusted to stay in bounds */
+  background: white;
+  padding: 0;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 160px;
+  overflow: hidden;
+  z-index: 100; /* ensure popup is above sticky header */
+  max-height: 140px; /* limit height to stay within choose-box */
+}
+
+.options-popup button {
+  padding: 12px 16px;
+  background: transparent;
+  color: #111;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  text-align: left;
+}
+
+.options-popup button:nth-child(1) { background: #A5D4FF; }
+.options-popup button:nth-child(2) { background: #C9FFDC; }
+.options-popup button:nth-child(3) { background: #F3D0FF; }
+
+.options-popup button:hover { filter: brightness(0.97); }
+
+.options-popup button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Layout helpers: keep header input fixed and make options panel scrollable */
+.vertical-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  /* Calculate available height under the sticky header; adjust if your header height changes */
+  height: calc(100vh - 76px);
+}
+
+.recorder-area {
+  /* Fixed (non-growing) area for the recorder; header contains the main input */
+  flex: 0 0 auto;
+}
+
+.options-area {
+  /* Flexible area that scrolls internally so the header (with input) stays visible */
+  flex: 1 1 auto;
+  min-height: 0; /* allow proper flexbox overflow behavior */
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* Header input styling: pink frame, white background, black text */
+.header-input {
+  border: 2px solid hotpink;
+  background-color: white;
+  color: black;
+  padding: 8px;
+  border-radius: 8px;
+  width: 420px;
+  resize: none;
+  box-sizing: border-box;
+}
+
+/* Keep header compact and aligned with the new input */
+.sticky-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+  padding: 12px 16px;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.header-bottom {
+  width: 100%;
+}
+
+.logo-img {
+  height: 40px;
+  width: auto;
+}
+
+.howto-img {
+  height: 44px; /* slightly larger so the how-to icon stands out */
+  width: auto;
+}
+
+/* Slight tweak so header input-card fits well inside header */
+.header-input-card {
+  margin: 0 auto;
+  max-width: 920px;
+  background: #ffdff0; /* same as recorder */
+}
+
+/* Ensure header input remains visually white/black even though header text uses white */
+.sticky-header .header-input {
+  background-color: white;
+  color: black;
+}
+
+.header-right button {
+  background: none;
+  border: none;
+  color: #b00020;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Main content */
+.main-content {
+  padding: 16px;
+  flex: 1;
+}
+
+/* Layout: Recorder + OptionsPanel */
+.page-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Recorder */
+.recorder {
+  width: 100%;
+}
+
+.input-card {
+  position: relative;
+  background: #ffdff0;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.04);
+  margin-bottom: 12px;
+}
+
+.input-label {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+}
+
+.input-textarea {
+  border: 2px solid hotpink;
+  background-color: white;
+  color: black;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 16px;
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.input-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.icon-btn.active {
+  background: #ffd0d8;
+}
+
+/* Specific mic button sizing and centering */
+.mic-btn {
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+}
+
+.mic-btn svg {
+  color: #b00020; /* default mic color (dark pink/red) */
+}
+
+.mic-btn.active svg {
+  color: #ff3b85; /* brighter pink when active */
+}
+
+.card-handle {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -10px;
+  width: 48px;
+  height: 10px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* OptionsPanel */
+.options-panel {
+  border: 2px dashed #ccc;
+  border-radius: 12px;
+  padding: 20px;
+  background-color: #fff;
+}
+
+.options-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.options-controls button {
+  padding: 8px 14px;
+  background-color: #ff69b4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.loading {
+  font-style: italic;
+  color: #555;
+}
+
+.error {
+  color: #b00020;
   margin-bottom: 8px;
+}
+
+.hint {
+  color: #888;
+  font-style: italic;
+  margin-bottom: 8px;
+}
+
+.pinned {
+  background: #fff8e1;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+/* Tags */
+.tags-list {
+  margin-top: 12px;
+}
+
+.tag-card {
+  position: relative;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+.tag-vocab {
+  background: #dff1ff;
+}
+
+.tag-analysis {
+  background: #e7ffe9;
+}
+
+.tag-translation {
+  background: #f5e8ff;
+}
+
+.tag-actions {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.small-icon {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* Choose box */
+.choose-box {
+  border: none;
+  border-radius: 8px;
+  padding: 60px 20px;
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  min-height: 120px;
+}
+
+.choose-inner {
+  text-align: center;
+  color: #777;
+  font-size: 14px;
+}
+
+.choose-inner .plus {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
   border: 1px solid #ddd;
   font-size: 20px;
 }

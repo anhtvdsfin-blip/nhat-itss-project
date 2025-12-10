@@ -31,7 +31,6 @@ export default function Recorder({ value, onChange, onPinTranslation }) {
     rec.onend = () => setListening(false);
 
     recognitionRef.current = rec;
-    // cleanup
     return () => { recognitionRef.current = null; };
   }, [onChange]);
 
@@ -71,7 +70,6 @@ export default function Recorder({ value, onChange, onPinTranslation }) {
     <div className="recorder">
       <div className="input-card">
         <div className="input-label">Input text</div>
-
         {error && <div className="error">⚠️ {error}</div>}
         {!value && !editing && <div className="hint">No input</div>}
 
@@ -80,13 +78,19 @@ export default function Recorder({ value, onChange, onPinTranslation }) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           readOnly={!editing}
-          placeholder="Kết quả nhận dạng hoặc nhập tay..."
+          placeholder="話してください..."
           rows={4}
         />
 
+        {/* Giữ lại các nút điều khiển */}
         <div className="input-controls">
-          <button className={`icon-btn ${listening ? 'active' : ''}`} onClick={toggleListen} title="Mic">
-            🎤
+          <button className={`icon-btn mic-btn ${listening ? 'active' : ''}`} onClick={toggleListen} title="Mic" aria-pressed={listening} aria-label="Toggle microphone">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M12 14a3.99 3.99 0 0 0 4-4V6a4 4 0 0 0-8 0v4a4 4 0 0 0 4 4z" fill="currentColor"/>
+              <path d="M19 10v1a7 7 0 0 1-14 0v-1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M12 19v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M8 22h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </button>
           <button className="icon-btn" onClick={() => setEditing(e => !e)} title="Chỉnh sửa">
             ✏️
@@ -99,7 +103,7 @@ export default function Recorder({ value, onChange, onPinTranslation }) {
           </button>
         </div>
 
-        <div className="card-handle" aria-hidden="true" />
+        
       </div>
     </div>
   );

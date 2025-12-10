@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 function Tag({ title, children, type }) {
   return (
     <div className={`tag-card tag-${type}`}>
-      <h4>{title}</h4>
+      <h4>
+        {type === 'vocab' && '言葉の説明'}
+        {type === 'analysis' && '内容の分析'}
+        {type === 'translation' && '翻訳'}
+      </h4>
       <div className="tag-body">{children}</div>
       <div className="tag-actions">
         <button className="small-icon" title="Check">☑️</button>
@@ -17,8 +21,25 @@ export default function OptionsPanel({ text = '', onRequestPin, pinned }) {
   const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [optionsVisible, setOptionsVisible] = useState(false); // State quản lý hiển thị Options Menu
+  const [activeButton, setActiveButton] = useState(null); // State quản lý button đang active
+  const [popupPos, setPopupPos] = useState({ left: 0, top: 0 });
+  const containerRef = useRef(null);
+  const popupRef = useRef(null);
 
   const BASE = 'http://localhost:4000/api';
+
+  useEffect(() => {
+    function handleDocClick(e) {
+      if (!containerRef.current) return;
+      // if clicked inside popup or inside choose-box, do nothing
+      if (containerRef.current.contains(e.target)) return;
+      if (popupRef.current && popupRef.current.contains(e.target)) return;
+      setOptionsVisible(false);
+    }
+    document.addEventListener('mousedown', handleDocClick);
+    return () => document.removeEventListener('mousedown', handleDocClick);
+  }, []);
 
   async function postJSON(path, body) {
     setError(null);
@@ -36,6 +57,19 @@ export default function OptionsPanel({ text = '', onRequestPin, pinned }) {
       setLoading(false);
     }
   }
+  
+  // Đã SỬA: Thêm setOptionsVisible(false) để đóng menu sau khi hành động hoàn tất
+  const handleAction = (actionType, actionFn) => async () => {
+    if (!text || loading) return;
+    setActiveButton(actionType); 
+    try {
+      await actionFn();
+    } finally {
+      setActiveButton(null); 
+      setOptionsVisible(false); // THAY ĐỔI TẠI ĐÂY: Đóng menu sau khi thực hiện xong
+    }
+  };
+
 
   const addVocab = async () => {
     if (!text) return;
@@ -115,14 +149,54 @@ export default function OptionsPanel({ text = '', onRequestPin, pinned }) {
 
   return (
     <div className="options-panel">
-      <div className="options-controls">
-        <button onClick={addVocab} disabled={!text || loading}>Giải thích từ</button>
-        <button onClick={addAnalysis} disabled={!text || loading}>Phân tích nội dung</button>
-        <button onClick={addTranslation} disabled={!text || loading}>Dịch sang Tiếng Việt</button>
-      </div>
-
+      
       {loading && <div className="loading">Loading...</div>}
       {error && <div className="error">⚠️ {error}</div>}
+
+      {/* Vùng Choose options: click để hiện popup tại vị trí click */}
+      <div className="choose-box" ref={containerRef} onClick={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const left = e.clientX - rect.left;
+        const top = e.clientY - rect.top;
+        setPopupPos({ left, top });
+        setOptionsVisible(true);
+      }}>
+        <div className="choose-inner">
+          <div className="plus">+</div>
+          <div>Choose options</div>
+        </div>
+        {optionsVisible && (
+          <div
+            className="options-popup"
+            ref={popupRef}
+            style={{ left: popupPos.left, top: popupPos.top }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={handleAction('vocab', addVocab)} 
+              disabled={!text || loading}
+              className={activeButton === 'vocab' ? 'options-btn-active' : ''}
+            >
+              言葉の説明
+            </button>
+            <button 
+              onClick={handleAction('analysis', addAnalysis)} 
+              disabled={!text || loading}
+              className={activeButton === 'analysis' ? 'options-btn-active' : ''}
+            >
+              内容の分析
+            </button>
+            <button 
+              onClick={handleAction('translation', addTranslation)} 
+              disabled={!text || loading}
+              className={activeButton === 'translation' ? 'options-btn-active' : ''}
+            >
+              翻訳
+            </button>
+          </div>
+        )}
+      </div>
+      {/* KẾT THÚC: Logic hiển thị Options Menu / Choose Box */}
 
       <div className="tags-list">
         {pinned && (
@@ -131,17 +205,13 @@ export default function OptionsPanel({ text = '', onRequestPin, pinned }) {
             <div>{pinned}</div>
           </div>
         )}
-        {tags.length === 0 && <div className="empty">Chọn options để hiển thị thẻ...</div>}
         {tags.map(tag => (
-          <Tag key={tag.id} title={tag.type} type={tag.type}>
+          <Tag key={tag.id} type={tag.type}>
             {tag.type === 'vocab' && (
               <div>
                 <div><strong>{tag.content.word}</strong> — {tag.content.pos}</div>
                 <div>{tag.content.meaning}</div>
                 <div className="example">{tag.content.example}</div>
-                <div style={{marginTop:8}}>
-                  <button onClick={() => addSingleVocabLookup(tag.content.word)}>Chi tiết từ</button>
-                </div>
               </div>
             )}
             {tag.type === 'analysis' && (
@@ -154,18 +224,10 @@ export default function OptionsPanel({ text = '', onRequestPin, pinned }) {
               <div>
                 <div><em>{tag.content.jp}</em></div>
                 <div>{tag.content.vi}</div>
-                <button className="pin-btn" onClick={() => onRequestPin && onRequestPin(tag.content.vi)}>Ghim bản dịch</button>
               </div>
             )}
           </Tag>
         ))}
-      </div>
-
-      <div className="choose-box">
-        <div className="choose-inner">
-          <div className="plus">+</div>
-          <div>Choose options</div>
-        </div>
       </div>
     </div>
   );
