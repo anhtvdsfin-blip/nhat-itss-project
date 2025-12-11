@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-function Tag({ title, children, type }) {
+function Tag({ title, children, type, onDelete }) {
   return (
     <div className={`tag-card tag-${type}`}>
       <h4>
@@ -10,12 +10,18 @@ function Tag({ title, children, type }) {
       </h4>
       <div className="tag-body">{children}</div>
       <div className="tag-actions">
-        <button className="small-icon" type="button" title="Check">
+        <button className="small-icon" type="button" title="Copy">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 12.5 9 17l11-11" />
+            <path d="M9 9V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-4" />
+            <path d="M5 9H15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z" />
           </svg>
         </button>
-        <button className="small-icon" type="button" title="Delete">
+        <button
+          className="small-icon"
+          type="button"
+          title="Delete"
+          onClick={onDelete}
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 6h18" />
             <path d="M8 6V4h8v2" />
@@ -84,20 +90,22 @@ export default function OptionsPanel({ text = '', pinned }) {
 
 
   const addVocab = async () => {
-    if (!text) return;
+    const inputText = text?.trim();
+    if (!inputText) return;
     try {
-      const data = await postJSON('analyze', { text }); // use analyze to get vocabulary list
-      const vocabItems = (data.vocabulary || []).map(v => ({
+      const data = await postJSON('vocab/lookup', { input: inputText });
+      const vocabTag = {
         type: 'vocab',
         id: Date.now() + Math.random(),
         content: {
-          word: v.word || v.word,
-          pos: v.pos || v.pos,
-          meaning: v.meaning_vi || v.meaning || v.meaning_vi || v.meaning || '—',
-          example: v.example || text
+          input: inputText,
+          meaning: data.meaning || '—',
+          synonyms: Array.isArray(data.synonyms) ? data.synonyms : [],
+          examples: Array.isArray(data.examples) ? data.examples : [],
+          provider: data.provider || 'unknown'
         }
-      }));
-      setTags(t => [...vocabItems, ...t]);
+      };
+      setTags(t => [vocabTag, ...t]);
     } catch (e) {
       setError('Vocab failed: ' + (e.message || e));
     }
@@ -106,13 +114,13 @@ export default function OptionsPanel({ text = '', pinned }) {
   const addAnalysis = async () => {
     if (!text) return;
     try {
-      const data = await postJSON('analyze', { text });
+      const data = await postJSON('classify', { text });
       const analysisTag = {
         type: 'analysis',
         id: Date.now(),
         content: {
-          sentenceType: data.sentenceType || data.type || '—',
-          keywords: data.keywords || []
+          sentences: Array.isArray(data.sentences) ? data.sentences : [],
+          provider: data.provider || 'unknown'
         }
       };
       setTags(t => [analysisTag, ...t]);
@@ -130,7 +138,8 @@ export default function OptionsPanel({ text = '', pinned }) {
         id: Date.now(),
         content: {
           jp: data.jp || text,
-          vi: data.vi || data.translation || '—'
+          vi: data.vi || data.translation || '—',
+          provider: data.provider || 'unknown'
         }
       };
       setTags(t => [translation, ...t]);
@@ -142,21 +151,28 @@ export default function OptionsPanel({ text = '', pinned }) {
   const addSingleVocabLookup = async (word) => {
     if (!word) return;
     try {
-      const data = await postJSON('vocab', { word });
+      const trimmed = word.trim();
+      if (!trimmed) return;
+      const data = await postJSON('vocab/lookup', { input: trimmed });
       const tag = {
         type: 'vocab',
         id: Date.now(),
         content: {
-          word: data.word || word,
-          pos: data.pos || '—',
-          meaning: data.meaning_vi || data.meaning || '—',
-          example: (data.examples && data.examples[0]) || ''
+          input: trimmed,
+          meaning: data.meaning || '—',
+          synonyms: Array.isArray(data.synonyms) ? data.synonyms : [],
+          examples: Array.isArray(data.examples) ? data.examples : [],
+          provider: data.provider || 'unknown'
         }
       };
       setTags(t => [tag, ...t]);
     } catch (e) {
       setError('Vocab lookup failed: ' + (e.message || e));
     }
+  };
+
+  const removeTag = (id) => {
+    setTags((current) => current.filter((tag) => tag.id !== id));
   };
 
   return (
@@ -175,24 +191,60 @@ export default function OptionsPanel({ text = '', pinned }) {
             <div className="empty">Chọn options để hiển thị thẻ...</div>
           )}
           {tags.map(tag => (
-            <Tag key={tag.id} type={tag.type}>
+            <Tag
+              key={tag.id}
+              type={tag.type}
+              onDelete={() => removeTag(tag.id)}
+            >
               {tag.type === 'vocab' && (
                 <div>
-                  <div><strong>{tag.content.word}</strong> — {tag.content.pos}</div>
-                  <div>{tag.content.meaning}</div>
-                  <div className="example">{tag.content.example}</div>
+                  <div><strong>{tag.content.input}</strong></div>
+                  <div>{tag.content.meaning || '—'}</div>
+                  {tag.content.synonyms?.length > 0 && (
+                    <div>Synonyms: {tag.content.synonyms.join(', ')}</div>
+                  )}
+                  {tag.content.examples?.length > 0 && (
+                    <div className="example">
+                      {tag.content.examples.map((ex, idx) => (
+                        <div key={idx}>
+                          <em>{ex.jp}</em>
+                          <div>{ex.vi}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {tag.content.provider === 'fallback' && (
+                    <div className="warning">⚠️ Dữ liệu mẫu (thiếu Gemini).</div>
+                  )}
                 </div>
               )}
               {tag.type === 'analysis' && (
                 <div>
-                  <div>Loại câu: {tag.content.sentenceType}</div>
-                  <div>Keywords: {tag.content.keywords.join(', ')}</div>
+                  {tag.content.sentences?.map((item, idx) => (
+                    <div key={idx} className="analysis-line">
+                      <div>
+                        <strong>{item.typeVi || item.type || '—'}</strong>
+                        {item.type && item.typeVi && item.typeVi !== item.type && (
+                          <span> ({item.type})</span>
+                        )}
+                        {': '}{item.normalized || item.original}
+                      </div>
+                      {item.mainIdea && <div>Main idea: {item.mainIdea}</div>}
+                      {item.actionSuggestion && <div>Suggestion: {item.actionSuggestion}</div>}
+                    </div>
+                  ))}
+                  {tag.content.provider === 'fallback' && (
+                    <div className="warning">⚠️ Kết quả mẫu (thiếu Gemini).</div>
+                  )}
                 </div>
               )}
               {tag.type === 'translation' && (
                 <div>
                   <div><em>{tag.content.jp}</em></div>
                   <div>{tag.content.vi}</div>
+                  {tag.content.provider && tag.content.provider !== 'gemini' && (
+                    <div className="provider-note">Nguồn: {tag.content.provider}</div>
+                  )}
                 </div>
               )}
             </Tag>

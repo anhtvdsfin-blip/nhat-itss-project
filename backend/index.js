@@ -19,29 +19,54 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
 const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 
 app.use(cors());
 app.use(express.json());
 
-// helper: call OpenAI ChatCompletion (gpt-3.5-turbo)
-async function callOpenAI(systemPrompt, userPrompt) {
-  if (!OPENAI_KEY) throw new Error('NO_OPENAI_KEY');
-  const url = 'https://api.openai.com/v1/chat/completions';
-  const payload = {
-    model: 'gpt-3.5-turbo',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ],
-    temperature: 0.2,
-    max_tokens: 1200
-  };
-  const res = await axios.post(url, payload, {
-    headers: { Authorization: `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' }
-  });
-  return res.data.choices?.[0]?.message?.content || '';
+function sanitizeText(input = '') {
+  let normalized = String(input).trim();
+  try {
+    normalized = normalized.replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, '');
+  } catch (err) {
+    normalized = normalized.replace(/[\u{1F300}-\u{1FAFF}]/gu, '');
+  }
+  normalized = normalized
+    .replace(/[\r\t]+/g, ' ')
+    .replace(/\s{2,}/g, ' ');
+  return normalized;
+}
+
+function splitSentences(text) {
+  return text
+    .split(/(?:。|！|!|\?|？)+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function parseGeminiJson(raw) {
+  if (typeof raw !== 'string') return null;
+  let trimmed = raw.trim();
+  if (trimmed.startsWith('```')) {
+    trimmed = trimmed.replace(/^```(?:json|JSON)?\s*/u, '');
+    trimmed = trimmed.replace(/```$/u, '').trim();
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch (err) {
+    return null;
+  }
+}
+
+const TYPE_LABELS = {
+  '命令文': 'Câu mệnh lệnh',
+  '疑問文': 'Câu nghi vấn',
+  '肯定文': 'Câu khẳng định'
+};
+
+function resolveTypeLabel(type) {
+  if (typeof type !== 'string') return 'Không xác định';
+  return TYPE_LABELS[type.trim()] || 'Không xác định';
 }
 
 // helper: call Gemini / Google Generative API (using API key)
@@ -72,97 +97,88 @@ async function callGemini(prompt, model = 'gemini-2.5-flash') {
 
 // health
 app.get('/api/ping', (req, res) => {
-  res.json({ ok: true, time: Date.now(), hasOpenAI: !!OPENAI_KEY, hasGemini: !!GEMINI_KEY });
+  res.json({ ok: true, time: Date.now(), hasGemini: !!GEMINI_KEY });
 });
 
-// analyze: try OpenAI -> Gemini -> placeholder
-app.post('/api/analyze', async (req, res) => {
-  const text = (req.body && req.body.text) ? String(req.body.text).trim() : '';
-  if (!text) return res.status(400).json({ error: 'No text provided' });
-
-  // OpenAI path
-  if (OPENAI_KEY) {
-    try {
-      const system = `Bạn là trợ lý ngôn ngữ: phân tích câu tiếng Nhật cho học sinh Việt. Trả về duy nhất 1 JSON hợp lệ gồm: sentenceType, keywords (mảng), vocabulary (mảng object {word,reading,pos,meaning_vi,example}), suggestions (mảng).`;
-      const userPrompt = `Phân tích đoạn sau:\n\n${text}\n\nTrả về JSON.`;
-      const aiResp = await callOpenAI(system, userPrompt);
-      try {
-        return res.json({ text, ...(JSON.parse(aiResp)) });
-      } catch (e) {
-        return res.json({ text, raw: aiResp });
-      }
-    } catch (err) {
-      console.error('OpenAI analyze failed:', err.message || err);
-      // fall through to Gemini
-    }
+// classify sentences: Gemini -> heuristic fallback
+app.post('/api/classify', async (req, res) => {
+  const rawText = req.body && typeof req.body.text === 'string' ? req.body.text : '';
+  const cleaned = sanitizeText(rawText);
+  const sentences = splitSentences(cleaned);
+  if (!sentences.length) {
+    return res.status(400).json({ error: 'No text provided' });
   }
 
-  // Gemini path
+  // Gemini classification path
   if (GEMINI_KEY) {
     try {
-      const gPrompt = `Bạn là trợ lý ngôn ngữ cho học sinh Việt. Phân tích đoạn Nhật sau và trả về CHỈ 1 JSON hợp lệ với các trường: sentenceType, keywords (mảng), vocabulary (mảng object {word,reading,pos,meaning_vi,example}), suggestions (mảng).\n\nText:\n${text}`;
+      const sentencesList = sentences.map((s, idx) => `${idx + 1}. ${s}`).join('\n');
+      const gPrompt = `Bạn là trợ lý ngôn ngữ tiếng Nhật cho học sinh Việt Nam. Hãy phân loại từng câu sau thành đúng một trong 3 loại: 命令文 (mệnh lệnh), 疑問文 (nghi vấn), 肯定文 (khẳng định). Với mỗi câu, hãy trả về JSON theo cấu trúc:\n{\n  "sentences": [\n    {\n      "original": "...",\n      "normalized": "...",\n      "type": "命令文" | "疑問文" | "肯定文",\n     "actionSuggestion": "..." // gợi ý hành động bằng tiếng Việt\n    }\n  ]\n}\n\nChỉ trả về JSON hợp lệ duy nhất, không thêm giải thích. Dữ liệu đầu vào:\n${sentencesList}`;
       const giResp = await callGemini(gPrompt);
-      try {
-        return res.json({ text, ...(JSON.parse(giResp)) });
-      } catch (e) {
-        return res.json({ text, raw: giResp });
+      const parsed = parseGeminiJson(giResp);
+      if (parsed && Array.isArray(parsed.sentences)) {
+        const sentencesResult = parsed.sentences
+          .map((item, idx) => {
+            const original = item && typeof item.original === 'string' ? item.original.trim() : sentences[idx] || '';
+            const normalized = item && typeof item.normalized === 'string' ? item.normalized.trim() : original;
+            const type = item && typeof item.type === 'string' ? item.type.trim() : '肯定文';
+            const mainIdea = item && typeof item.mainIdea === 'string' ? item.mainIdea.trim() : '';
+            const actionSuggestion = item && typeof item.actionSuggestion === 'string' ? item.actionSuggestion.trim() : '';
+            return {
+              original,
+              normalized,
+              type,
+              typeVi: resolveTypeLabel(type),
+              mainIdea,
+              actionSuggestion
+            };
+          })
+          .filter((item) => item.original);
+        if (sentencesResult.length) {
+          return res.json({ sentences: sentencesResult, provider: 'gemini' });
+        }
       }
+      console.error('Gemini classify parse failed: unexpected format');
     } catch (err) {
-      console.error('Gemini analyze failed:', err.message || err);
+      console.error('Gemini classify failed:', err.message || err);
     }
   }
 
-  // fallback placeholder
-  const words = text.split(/\s+|、|。|\.|,/).filter(Boolean);
-  const keywords = words.slice(0, Math.min(6, words.length));
-  const vocab = keywords.map((w, i) => ({
-    word: w,
-    pos: i % 2 === 0 ? '名詞 (placeholder)' : '動詞 (placeholder)',
-    meaning_vi: `Nghĩa tiếng Việt (placeholder) của "${w}"`,
-    example: text
-  }));
-
-  res.json({
-    text,
-    sentenceType: 'Trần thuật / Mệnh lệnh (placeholder)',
-    keywords,
-    vocabulary: vocab,
-    suggestions: ['Hãy trả lời giáo viên (placeholder)']
+  const fallbackSentences = sentences.map((sentence) => {
+    const normalized = sanitizeText(sentence);
+    let type = '肯定文';
+    if (/[？?]$/.test(sentence) || sentence.includes('か')) type = '疑問文';
+    if (/(なさい|しろ|せよ|ください)$/u.test(sentence)) type = '命令文';
+    const mainIdea = `Ý chính (placeholder) của câu: "${normalized}"`;
+    const actionSuggestion = type === '命令文'
+      ? 'Thực hiện yêu cầu được nêu (placeholder)'
+      : type === '疑問文'
+        ? 'Cân nhắc câu trả lời phù hợp (placeholder)'
+        : 'Ghi nhớ thông tin chính (placeholder)';
+    return { original: sentence, normalized, type, typeVi: resolveTypeLabel(type), mainIdea, actionSuggestion };
   });
+
+  res.json({ sentences: fallbackSentences, provider: 'fallback' });
 });
 
-// translate: OpenAI -> Gemini -> LibreTranslate -> placeholder
+// translate: Gemini -> LibreTranslate -> placeholder
 app.post('/api/translate', async (req, res) => {
-  const text = (req.body && req.body.text) ? String(req.body.text).trim() : '';
+  const rawText = req.body && typeof req.body.text === 'string' ? req.body.text : '';
+  const text = sanitizeText(rawText);
   if (!text) return res.status(400).json({ error: 'No text provided' });
 
-  // OpenAI
-  if (OPENAI_KEY) {
-    try {
-      const system = 'Bạn là bản dịch chuyên nghiệp Nhật->Tiếng Việt. Chỉ trả về phần dịch tiếng Việt.';
-      const aiResp = await callOpenAI(system, `Dịch sang tiếng Việt:\n\n${text}`);
-      return res.json({ jp: text, vi: aiResp.trim(), provider: 'openai' });
-    } catch (err) {
-      console.error('OpenAI translate failed:', err.message || err);
-    }
-  }
-
-  // Gemini
   if (GEMINI_KEY) {
     try {
-      const gPrompt = `Dịch đoạn sau từ tiếng Nhật sang tiếng Việt. Trả về CHỈ phần dịch (Tiếng Việt):\n\n${text}`;
+      const gPrompt = `Dịch đoạn sau từ tiếng Nhật sang tiếng Việt. Chỉ trả về phần dịch tiếng Việt, giữ nguyên dấu câu:\n\n${text}`;
       const giResp = await callGemini(gPrompt, 'gemini-2.5-flash');
       if (giResp && giResp.trim()) {
         return res.json({ jp: text, vi: giResp.trim(), provider: 'gemini' });
-      } else {
-        console.warn('Gemini returned empty response for translate.');
       }
     } catch (err) {
       console.error('Gemini translate failed:', err.message || err);
     }
   }
 
-  // LibreTranslate fallback
   try {
     const ltRes = await axios.post('https://libretranslate.de/translate', {
       q: text,
@@ -176,55 +192,76 @@ app.post('/api/translate', async (req, res) => {
     console.error('LibreTranslate failed:', err.message || err);
   }
 
-  // final fallback placeholder
   return res.json({ jp: text, vi: `Tiếng Việt (server fallback): ${text}`, provider: 'fallback' });
 });
 
-// vocab lookup: OpenAI -> Gemini -> placeholder
-app.post('/api/vocab', async (req, res) => {
-  const word = (req.body && req.body.word) ? String(req.body.word).trim() : '';
-  if (!word) return res.status(400).json({ error: 'No word provided' });
-
-  if (OPENAI_KEY) {
-    try {
-      const system = 'Bạn là từ điển Nhật-Việt. Trả về JSON: { word, reading, pos, meaning_vi, examples: [...] }';
-      const aiResp = await callOpenAI(system, `Cho thông tin chi tiết cho từ: ${word}`);
-      try {
-        return res.json(JSON.parse(aiResp));
-      } catch (e) {
-        return res.json({ raw: aiResp });
-      }
-    } catch (err) {
-      console.error('OpenAI vocab failed:', err.message || err);
-    }
-  }
+// vocab lookup: Gemini -> placeholder fallback
+app.post('/api/vocab/lookup', async (req, res) => {
+  const rawInput = req.body && typeof req.body.input === 'string' ? req.body.input : '';
+  const word = sanitizeText(rawInput);
+  if (!word) return res.status(400).json({ error: 'No input provided' });
 
   if (GEMINI_KEY) {
     try {
-      const gPrompt = `Bạn là từ điển Nhật-Việt. Trả về CHỈ 1 JSON với các trường: word, reading, pos, meaning_vi, examples (mảng). Từ: ${word}`;
+      const gPrompt = `Bạn là từ điển Nhật-Việt. Với từ hoặc cụm "${word}", trả về CHỈ 1 JSON hợp lệ và duy nhất theo cấu trúc:\n{\n  "meaning": "...",\n  "synonyms": ["...", "..."],\n  "examples": [\n    { "jp": "...", "vi": "..." }
+  ]\n}\nYêu cầu: synonyms phải có ít nhất 1 phần tử, examples phải có ít nhất 1 phần tử. Không giải thích thêm.`;
       const giResp = await callGemini(gPrompt);
       try {
-        return res.json(JSON.parse(giResp));
-      } catch (e) {
-        return res.json({ raw: giResp });
+        const parsed = parseGeminiJson(giResp);
+        if (!parsed) {
+          console.error('Gemini vocab lookup parse failed: null result');
+        } else {
+          const meaning = typeof parsed.meaning === 'string' ? parsed.meaning.trim() : '';
+          const synonyms = Array.isArray(parsed.synonyms)
+            ? Array.from(new Set(parsed.synonyms.map((s) => String(s).trim()).filter(Boolean)))
+            : [];
+          const examples = Array.isArray(parsed.examples)
+            ? parsed.examples
+                .map((ex) => {
+                  const jpCandidate = ex && typeof ex.jp === 'string' ? ex.jp
+                    : ex && typeof ex.ja === 'string' ? ex.ja
+                    : ex && typeof ex.example_jp === 'string' ? ex.example_jp
+                    : '';
+                  const viCandidate = ex && typeof ex.vi === 'string' ? ex.vi
+                    : ex && typeof ex.vn === 'string' ? ex.vn
+                    : ex && typeof ex.example_vi === 'string' ? ex.example_vi
+                    : '';
+                  return {
+                    jp: sanitizeText(jpCandidate),
+                    vi: sanitizeText(viCandidate)
+                  };
+                })
+                .filter((ex) => ex.jp && ex.vi)
+            : [];
+          if (meaning && synonyms.length && examples.length) {
+            return res.json({ meaning, synonyms, examples, provider: 'gemini' });
+          }
+        }
+      } catch (err) {
+        console.error('Gemini vocab lookup parse failed:', err.message || err);
       }
     } catch (err) {
-      console.error('Gemini vocab failed:', err.message || err);
+      console.error('Gemini vocab lookup failed:', err.message || err);
     }
   }
 
-  // fallback
-  return res.json({
-    word,
-    reading: '',
-    pos: '名詞 (placeholder)',
-    meaning_vi: `Nghĩa tiếng Việt (placeholder) của "${word}"`,
-    examples: [`${word} の例文 (placeholder)`]
-  });
+  const fallback = {
+    meaning: `Nghĩa tiếng Việt (placeholder) của "${word}"`,
+    synonyms: [`${word} の類義語 (placeholder)`],
+    examples: [
+      {
+        jp: `${word} の例文 (placeholder)`,
+        vi: `Ví dụ tiếng Việt cho "${word}" (placeholder)`
+      }
+    ],
+    provider: 'fallback'
+  };
+
+  res.json(fallback);
 });
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
 app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT} (OpenAI: ${!!OPENAI_KEY}, Gemini: ${!!GEMINI_KEY})`);
+  console.log(`Backend running on http://localhost:${PORT} (Gemini: ${!!GEMINI_KEY})`);
 });

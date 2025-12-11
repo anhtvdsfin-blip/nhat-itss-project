@@ -419,6 +419,36 @@ html, body, #root {
   background: #fafafa;
 }
 
+.howto-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.howto-home-btn {
+  align-self: center;
+  min-width: 128px;
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  border: 1px solid #b0006b;
+  background: #ffdaeb;
+  color: #111111;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-decoration: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.howto-home-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
 .howto-page-only img {
   width: 100%;
   max-width: 960px;
