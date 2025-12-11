@@ -10,19 +10,31 @@ function Tag({ title, children, type }) {
       </h4>
       <div className="tag-body">{children}</div>
       <div className="tag-actions">
-        <button className="small-icon" title="Check">☑️</button>
-        <button className="small-icon" title="Delete">🗑️</button>
+        <button className="small-icon" type="button" title="Check">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 12.5 9 17l11-11" />
+          </svg>
+        </button>
+        <button className="small-icon" type="button" title="Delete">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 6h18" />
+            <path d="M8 6V4h8v2" />
+            <path d="M19 6v14H5V6" />
+            <path d="M10 11v6" />
+            <path d="M14 11v6" />
+          </svg>
+        </button>
       </div>
     </div>
   );
 }
 
-export default function OptionsPanel({ text = '', onRequestPin, pinned }) {
+export default function OptionsPanel({ text = '', pinned }) {
   const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [optionsVisible, setOptionsVisible] = useState(false); // State quản lý hiển thị Options Menu
-  const [activeButton, setActiveButton] = useState(null); // State quản lý button đang active
+  const [optionsVisible, setOptionsVisible] = useState(false);
+  const [activeButton, setActiveButton] = useState(null);
   const [popupPos, setPopupPos] = useState({ left: 0, top: 0 });
   const containerRef = useRef(null);
   const popupRef = useRef(null);
@@ -148,86 +160,93 @@ export default function OptionsPanel({ text = '', onRequestPin, pinned }) {
   };
 
   return (
-    <div className="options-panel">
-      
-      {loading && <div className="loading">Loading...</div>}
-      {error && <div className="error">⚠️ {error}</div>}
-
-      {/* Vùng Choose options: click để hiện popup tại vị trí click */}
-      <div className="choose-box" ref={containerRef} onClick={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const left = e.clientX - rect.left;
-        const top = e.clientY - rect.top;
-        setPopupPos({ left, top });
-        setOptionsVisible(true);
-      }}>
-        <div className="choose-inner">
-          <div className="plus">+</div>
-          <div>Choose options</div>
-        </div>
-        {optionsVisible && (
-          <div
-            className="options-popup"
-            ref={popupRef}
-            style={{ left: popupPos.left, top: popupPos.top }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button 
-              onClick={handleAction('vocab', addVocab)} 
-              disabled={!text || loading}
-              className={activeButton === 'vocab' ? 'options-btn-active' : ''}
-            >
-              言葉の説明
-            </button>
-            <button 
-              onClick={handleAction('analysis', addAnalysis)} 
-              disabled={!text || loading}
-              className={activeButton === 'analysis' ? 'options-btn-active' : ''}
-            >
-              内容の分析
-            </button>
-            <button 
-              onClick={handleAction('translation', addTranslation)} 
-              disabled={!text || loading}
-              className={activeButton === 'translation' ? 'options-btn-active' : ''}
-            >
-              翻訳
-            </button>
-          </div>
-        )}
-      </div>
-      {/* KẾT THÚC: Logic hiển thị Options Menu / Choose Box */}
-
-      <div className="tags-list">
+    <div className="options-wrapper">
+      <div className="options-results">
+        {loading && <div className="loading">Loading...</div>}
+        {error && <div className="error">⚠️ {error}</div>}
         {pinned && (
           <div className="pinned">
             <strong>Đã ghim:</strong>
             <div>{pinned}</div>
           </div>
         )}
-        {tags.map(tag => (
-          <Tag key={tag.id} type={tag.type}>
-            {tag.type === 'vocab' && (
-              <div>
-                <div><strong>{tag.content.word}</strong> — {tag.content.pos}</div>
-                <div>{tag.content.meaning}</div>
-                <div className="example">{tag.content.example}</div>
-              </div>
-            )}
-            {tag.type === 'analysis' && (
-              <div>
-                <div>Loại câu: {tag.content.sentenceType}</div>
-                <div>Keywords: {tag.content.keywords.join(', ')}</div>
-              </div>
-            )}
-            {tag.type === 'translation' && (
-              <div>
-                <div><em>{tag.content.jp}</em></div>
-                <div>{tag.content.vi}</div>
-              </div>
-            )}
-          </Tag>
-        ))}
+        <div className="tags-list">
+          {tags.length === 0 && !loading && !error && (
+            <div className="empty">Chọn options để hiển thị thẻ...</div>
+          )}
+          {tags.map(tag => (
+            <Tag key={tag.id} type={tag.type}>
+              {tag.type === 'vocab' && (
+                <div>
+                  <div><strong>{tag.content.word}</strong> — {tag.content.pos}</div>
+                  <div>{tag.content.meaning}</div>
+                  <div className="example">{tag.content.example}</div>
+                </div>
+              )}
+              {tag.type === 'analysis' && (
+                <div>
+                  <div>Loại câu: {tag.content.sentenceType}</div>
+                  <div>Keywords: {tag.content.keywords.join(', ')}</div>
+                </div>
+              )}
+              {tag.type === 'translation' && (
+                <div>
+                  <div><em>{tag.content.jp}</em></div>
+                  <div>{tag.content.vi}</div>
+                </div>
+              )}
+            </Tag>
+          ))}
+        </div>
+      </div>
+
+      <div className="options-panel">
+        <div
+          className="choose-box"
+          ref={containerRef}
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const left = e.clientX - rect.left;
+            const top = e.clientY - rect.top;
+            setPopupPos({ left, top });
+            setOptionsVisible(true);
+          }}
+        >
+          <div className="choose-inner">
+            <div className="plus">+</div>
+            <div>Choose options</div>
+          </div>
+          {optionsVisible && (
+            <div
+              className="options-popup"
+              ref={popupRef}
+              style={{ left: popupPos.left, top: popupPos.top }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={handleAction('vocab', addVocab)}
+                disabled={!text || loading}
+                className={activeButton === 'vocab' ? 'options-btn-active' : ''}
+              >
+                言葉の説明
+              </button>
+              <button
+                onClick={handleAction('analysis', addAnalysis)}
+                disabled={!text || loading}
+                className={activeButton === 'analysis' ? 'options-btn-active' : ''}
+              >
+                内容の分析
+              </button>
+              <button
+                onClick={handleAction('translation', addTranslation)}
+                disabled={!text || loading}
+                className={activeButton === 'translation' ? 'options-btn-active' : ''}
+              >
+                翻訳
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
