@@ -198,65 +198,89 @@ app.post('/api/translate', async (req, res) => {
 // vocab lookup: Gemini -> placeholder fallback
 app.post('/api/vocab/lookup', async (req, res) => {
   const rawInput = req.body && typeof req.body.input === 'string' ? req.body.input : '';
-  const word = sanitizeText(rawInput);
-  if (!word) return res.status(400).json({ error: 'No input provided' });
+  const sentence = sanitizeText(rawInput);
+  if (!sentence) return res.status(400).json({ error: 'No input provided' });
 
   if (GEMINI_KEY) {
     try {
-      const gPrompt = `Bạn là từ điển Nhật-Việt. Với từ hoặc cụm "${word}", trả về CHỈ 1 JSON hợp lệ và duy nhất theo cấu trúc:\n{\n  "meaning": "...",\n  "synonyms": ["...", "..."],\n  "examples": [\n    { "jp": "...", "vi": "..." }
-  ]\n}\nYêu cầu: synonyms phải có ít nhất 1 phần tử, examples phải có ít nhất 1 phần tử. Không giải thích thêm.`;
+      const gPrompt = `Bạn là chuyên gia ngôn ngữ Nhật-Việt. Với câu tiếng Nhật: "${sentence}", hãy phân tích như sau:
+
+1. Dịch toàn bộ câu sang tiếng Việt: "mainTranslation"
+
+2. Tách câu thành các từ có nghĩa, nhưng QUAN TRỌNG: Tự động loại bỏ các từ quá phổ thông (như 私, あなた, です, だ) và các trợ từ (は, が, を, に, も, で, と, から, まで, へ). Chỉ giữ lại các danh từ, động từ, tính từ có giá trị học thuật cao.
+
+3. Với mỗi từ được giữ lại, đưa về dạng nguyên mẫu (dictionary form nếu là động từ/tính từ).
+
+4. Trả về CHỈ 1 JSON hợp lệ theo cấu trúc:
+{
+  "mainTranslation": "Dịch toàn bộ câu tiếng Việt",
+  "vocabList": [
+    {
+      "kanji": "Hán tự (nếu có, nếu không để trống)",
+      "reading": "Cách đọc hiragana/katakana",
+      "hanViet": "Giải nghĩa Hán Việt (nếu là Hán tự, nếu không để trống)",
+      "meaning": "Nghĩa tiếng Việt chính xác",
+      "synonyms": ["từ đồng nghĩa 1", "từ đồng nghĩa 2"],
+      "examples": [
+        {"jp": "Ví dụ tiếng Nhật 1", "vi": "Dịch tiếng Việt 1"},
+        {"jp": "Ví dụ tiếng Nhật 2", "vi": "Dịch tiếng Việt 2"}
+      ]
+    }
+  ]
+}
+
+Yêu cầu:
+- vocabList phải có ít nhất 1 phần tử nếu có từ phù hợp.
+- synonyms và examples phải có ít nhất 1 phần tử mỗi từ.
+- Không thêm giải thích ngoài JSON.`;
       const giResp = await callGemini(gPrompt);
-      try {
-        const parsed = parseGeminiJson(giResp);
-        if (!parsed) {
-          console.error('Gemini vocab lookup parse failed: null result');
-        } else {
-          const meaning = typeof parsed.meaning === 'string' ? parsed.meaning.trim() : '';
-          const synonyms = Array.isArray(parsed.synonyms)
-            ? Array.from(new Set(parsed.synonyms.map((s) => String(s).trim()).filter(Boolean)))
-            : [];
-          const examples = Array.isArray(parsed.examples)
-            ? parsed.examples
-                .map((ex) => {
-                  const jpCandidate = ex && typeof ex.jp === 'string' ? ex.jp
-                    : ex && typeof ex.ja === 'string' ? ex.ja
-                    : ex && typeof ex.example_jp === 'string' ? ex.example_jp
-                    : '';
-                  const viCandidate = ex && typeof ex.vi === 'string' ? ex.vi
-                    : ex && typeof ex.vn === 'string' ? ex.vn
-                    : ex && typeof ex.example_vi === 'string' ? ex.example_vi
-                    : '';
-                  return {
-                    jp: sanitizeText(jpCandidate),
-                    vi: sanitizeText(viCandidate)
-                  };
-                })
-                .filter((ex) => ex.jp && ex.vi)
-            : [];
-          if (meaning && synonyms.length && examples.length) {
-            return res.json({ meaning, synonyms, examples, provider: 'gemini' });
-          }
+      console.log('Gemini response for sentence analysis:', giResp);
+      const parsed = parseGeminiJson(giResp);
+      console.log('Parsed sentence result:', parsed);
+      if (parsed && typeof parsed.mainTranslation === 'string' && Array.isArray(parsed.vocabList) && parsed.vocabList.length > 0) {
+        // Validate each vocab item
+        const validVocabList = parsed.vocabList.filter(vocab =>
+          vocab.kanji !== undefined && vocab.reading && vocab.meaning &&
+          Array.isArray(vocab.synonyms) && vocab.synonyms.length > 0 &&
+          Array.isArray(vocab.examples) && vocab.examples.length > 0
+        );
+        if (validVocabList.length > 0) {
+          console.log('Sending sentence analysis response (Gemini):', { mainTranslation: parsed.mainTranslation, vocabList: validVocabList, provider: 'gemini' });
+          return res.json({ mainTranslation: parsed.mainTranslation, vocabList: validVocabList, provider: 'gemini' });
         }
-      } catch (err) {
-        console.error('Gemini vocab lookup parse failed:', err.message || err);
       }
+      console.error('Gemini sentence analysis parse failed: unexpected format');
     } catch (err) {
-      console.error('Gemini vocab lookup failed:', err.message || err);
+      console.error('Gemini sentence analysis failed:', err.message || err);
     }
   }
 
+  // Fallback: simple translation and basic vocab extraction
   const fallback = {
-    meaning: `Nghĩa tiếng Việt (placeholder) của "${word}"`,
-    synonyms: [`${word} の類義語 (placeholder)`],
-    examples: [
+    mainTranslation: `Dịch mẫu của câu: "${sentence}" (thiếu Gemini)`,
+    vocabList: [
       {
-        jp: `${word} の例文 (placeholder)`,
-        vi: `Ví dụ tiếng Việt cho "${word}" (placeholder)`
+        kanji: '',
+        reading: sentence,
+        hanViet: '',
+        meaning: `Nghĩa mẫu của "${sentence}"`,
+        synonyms: [`${sentence} の類義語 (mẫu)`],
+        examples: [
+          {
+            jp: `${sentence} の例文 (mẫu)`,
+            vi: `Ví dụ tiếng Việt cho "${sentence}" (mẫu)`
+          },
+          {
+            jp: `もう一つの例文 (mẫu)`,
+            vi: `Ví dụ khác (mẫu)`
+          }
+        ]
       }
     ],
     provider: 'fallback'
   };
 
+  console.log('Sending sentence analysis response (fallback):', fallback);
   res.json(fallback);
 });
 

@@ -42,6 +42,7 @@ export default function OptionsPanel({ text = '', pinned }) {
   const [optionsVisible, setOptionsVisible] = useState(false);
   const [activeButton, setActiveButton] = useState(null);
   const [popupPos, setPopupPos] = useState({ left: 0, top: 0 });
+  const [selectedVocabIndex, setSelectedVocabIndex] = useState(null);
   const containerRef = useRef(null);
   const popupRef = useRef(null);
 
@@ -99,9 +100,8 @@ export default function OptionsPanel({ text = '', pinned }) {
         id: Date.now() + Math.random(),
         content: {
           input: inputText,
-          meaning: data.meaning || '—',
-          synonyms: Array.isArray(data.synonyms) ? data.synonyms : [],
-          examples: Array.isArray(data.examples) ? data.examples : [],
+          mainTranslation: data.mainTranslation || '—',
+          vocabList: Array.isArray(data.vocabList) ? data.vocabList : [],
           provider: data.provider || 'unknown'
         }
       };
@@ -198,19 +198,78 @@ export default function OptionsPanel({ text = '', pinned }) {
             >
               {tag.type === 'vocab' && (
                 <div>
-                  <div><strong>{tag.content.input}</strong></div>
-                  <div>{tag.content.meaning || '—'}</div>
-                  {tag.content.synonyms?.length > 0 && (
-                    <div>Synonyms: {tag.content.synonyms.join(', ')}</div>
-                  )}
-                  {tag.content.examples?.length > 0 && (
-                    <div className="example">
-                      {tag.content.examples.map((ex, idx) => (
-                        <div key={idx}>
-                          <em>{ex.jp}</em>
-                          <div>{ex.vi}</div>
+                  <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
+                    Dịch: {tag.content.mainTranslation || '—'}
+                  </div>
+                  {tag.content.vocabList?.length > 0 && (
+                    <div>
+                      <div style={{ marginBottom: '10px' }}>
+                        <strong>Từ vựng quan trọng:</strong>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                        {tag.content.vocabList.map((vocab, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setSelectedVocabIndex(selectedVocabIndex === idx ? null : idx)}
+                            style={{
+                              padding: '6px 12px',
+                              border: '1px solid #ccc',
+                              borderRadius: '20px',
+                              backgroundColor: selectedVocabIndex === idx ? '#e0f7fa' : '#f9f9f9',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            {vocab.kanji || vocab.reading}
+                          </button>
+                        ))}
+                      </div>
+                      {selectedVocabIndex !== null && tag.content.vocabList[selectedVocabIndex] && (
+                        <div style={{
+                          border: '1px solid #ddd',
+                          borderRadius: '8px',
+                          padding: '15px',
+                          marginTop: '10px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          backgroundColor: '#fff'
+                        }}>
+                          {(() => {
+                            const vocab = tag.content.vocabList[selectedVocabIndex];
+                            return (
+                              <div>
+                                <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
+                                  {vocab.kanji || vocab.reading} ({vocab.reading})
+                                  {vocab.hanViet && <span style={{ marginLeft: '10px', textTransform: 'uppercase', fontSize: '12px', color: '#666' }}>
+                                    {vocab.hanViet}
+                                  </span>}
+                                </div>
+                                <div style={{ marginBottom: '8px' }}>
+                                  <strong>Nghĩa:</strong> {vocab.meaning}
+                                </div>
+                                {vocab.synonyms?.length > 0 && (
+                                  <div style={{ marginBottom: '8px' }}>
+                                    <strong>Synonyms:</strong> {vocab.synonyms.join(', ')}
+                                  </div>
+                                )}
+                                {vocab.examples?.length > 0 && (
+                                  <div>
+                                    <strong>Ví dụ:</strong>
+                                    <div className="example" style={{ marginTop: '5px' }}>
+                                      {vocab.examples.map((ex, exIdx) => (
+                                        <div key={exIdx} style={{ marginBottom: '5px' }}>
+                                          <em>{ex.jp}</em>
+                                          <div>{ex.vi}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
                   {tag.content.provider === 'fallback' && (
