@@ -180,6 +180,31 @@ html, body, #root {
 
 .icon-btn-active svg {
   stroke-width: 1.8;
+  stroke: #b00020;
+}
+
+
+.icon-btn-copied svg {
+  stroke-width: 1.8;
+  stroke: #0b8457;
+}
+
+
+.small-icon-copied svg {
+  stroke: #0b8457;
+}
+
+/* Tag entry animation: new tag slides down into place and fades in */
+.tag-card {
+  transition: transform 260ms cubic-bezier(.2,.9,.2,1), opacity 260ms ease;
+  transform-origin: top center;
+}
+.tag-card-enter {
+  animation: tagEnter 260ms cubic-bezier(.2,.9,.2,1) both;
+}
+@keyframes tagEnter {
+  from { transform: translateY(-12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 /* ensure the textarea has space so the overlay icons don't hide content */

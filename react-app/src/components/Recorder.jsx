@@ -5,6 +5,7 @@ export default function Recorder({ value, onChange, onPinTranslation }) {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -67,6 +68,33 @@ export default function Recorder({ value, onChange, onPinTranslation }) {
   const clearText = () => {
     onChange('');
     onPinTranslation && onPinTranslation(null);
+    setCopied(false);
+  };
+
+  const copyToClipboard = async () => {
+    if (!value || !value.trim()) {
+      setError('No content to copy');
+      return;
+    }
+    setError(null);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = value;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      setError(e.message || 'Copy failed');
+    }
   };
 
   return (
@@ -102,7 +130,7 @@ export default function Recorder({ value, onChange, onPinTranslation }) {
           </button>
 
           <button
-            className="icon-btn"
+            className={`icon-btn ${editing ? 'icon-btn-active' : ''}`}
             onClick={() => setEditing((prev) => !prev)}
             title={editing ? 'Finish editing' : 'Edit'}
             aria-label="Edit text"
@@ -121,6 +149,18 @@ export default function Recorder({ value, onChange, onPinTranslation }) {
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 12.5 9 17l11-11" />
+            </svg>
+          </button>
+
+          <button
+            className={`icon-btn ${copied ? 'icon-btn-copied' : ''}`}
+            onClick={copyToClipboard}
+            title={copied ? 'Copied' : 'Copy'}
+            aria-label="Copy text"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
             </svg>
           </button>
 

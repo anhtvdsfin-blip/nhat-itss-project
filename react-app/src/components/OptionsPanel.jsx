@@ -1,8 +1,34 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-function Tag({ title, children, type, onDelete }) {
+function Tag({ title, children, type, onDelete, entering }) {
+  const [copied, setCopied] = useState(false);
+  const containerRef = useRef(null);
+
+  const copyTagText = async () => {
+    if (!containerRef.current) return;
+    const text = containerRef.current.innerText || '';
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      // ignore
+    }
+  };
+
   return (
-    <div className={`tag-card tag-${type}`}>
+    <div className={`tag-card tag-${type} ${entering ? 'tag-card-enter' : ''}`} ref={containerRef}>
       <h4>
         {type === 'vocab' && '言葉の説明'}
         {type === 'analysis' && '内容の分析'}
@@ -10,7 +36,8 @@ function Tag({ title, children, type, onDelete }) {
       </h4>
       <div className="tag-body">{children}</div>
       <div className="tag-actions">
-        <button className="small-icon" type="button" title="Copy">
+        {copied && <div className="copy-badge small-copy-badge">Copied!</div>}
+        <button className={`small-icon ${copied ? 'small-icon-copied' : ''}`} type="button" title="Copy" onClick={copyTagText}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M9 9V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-4" />
             <path d="M5 9H15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z" />
@@ -37,6 +64,7 @@ function Tag({ title, children, type, onDelete }) {
 
 export default function OptionsPanel({ text = '', pinned }) {
   const [tags, setTags] = useState([]);
+  const [enteringIds, setEnteringIds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [optionsVisible, setOptionsVisible] = useState(false);
@@ -95,17 +123,25 @@ export default function OptionsPanel({ text = '', pinned }) {
     if (!inputText) return;
     try {
       const data = await postJSON('vocab/lookup', { input: inputText });
+      let vocabList = Array.isArray(data.vocabList) ? data.vocabList : [];
+      if (!vocabList || vocabList.length === 0) {
+        // fallback: split inputText into simple tokens when backend provides no vocabList
+        const tokens = inputText.split(/[\s、。，．,\.\u3000]+/).map(t => t.trim()).filter(Boolean);
+        vocabList = tokens.map(t => ({ reading: t, kanji: t }));
+      }
+
       const vocabTag = {
         type: 'vocab',
         id: Date.now() + Math.random(),
         content: {
           input: inputText,
-          mainTranslation: data.mainTranslation || '—',
-          vocabList: Array.isArray(data.vocabList) ? data.vocabList : [],
-          provider: data.provider || 'unknown'
+          vocabList,
+          provider: data.provider || 'fallback'
         }
       };
-      setTags(t => [vocabTag, ...t]);
+      setTags(t => [...t, vocabTag]);
+      setEnteringIds(ids => [vocabTag.id, ...ids]);
+      setTimeout(() => setEnteringIds(ids => ids.filter(i => i !== vocabTag.id)), 350);
     } catch (e) {
       setError('Vocab failed: ' + (e.message || e));
     }
@@ -123,7 +159,9 @@ export default function OptionsPanel({ text = '', pinned }) {
           provider: data.provider || 'unknown'
         }
       };
-      setTags(t => [analysisTag, ...t]);
+      setTags(t => [...t, analysisTag]);
+      setEnteringIds(ids => [analysisTag.id, ...ids]);
+      setTimeout(() => setEnteringIds(ids => ids.filter(i => i !== analysisTag.id)), 350);
     } catch (e) {
       setError('Analysis failed: ' + (e.message || e));
     }
@@ -142,7 +180,9 @@ export default function OptionsPanel({ text = '', pinned }) {
           provider: data.provider || 'unknown'
         }
       };
-      setTags(t => [translation, ...t]);
+      setTags(t => [...t, translation]);
+      setEnteringIds(ids => [translation.id, ...ids]);
+      setTimeout(() => setEnteringIds(ids => ids.filter(i => i !== translation.id)), 350);
     } catch (e) {
       setError('Translation failed: ' + (e.message || e));
     }
@@ -165,7 +205,9 @@ export default function OptionsPanel({ text = '', pinned }) {
           provider: data.provider || 'unknown'
         }
       };
-      setTags(t => [tag, ...t]);
+      setTags(t => [...t, tag]);
+      setEnteringIds(ids => [tag.id, ...ids]);
+      setTimeout(() => setEnteringIds(ids => ids.filter(i => i !== tag.id)), 350);
     } catch (e) {
       setError('Vocab lookup failed: ' + (e.message || e));
     }
@@ -194,13 +236,11 @@ export default function OptionsPanel({ text = '', pinned }) {
             <Tag
               key={tag.id}
               type={tag.type}
+              entering={enteringIds.includes(tag.id)}
               onDelete={() => removeTag(tag.id)}
             >
               {tag.type === 'vocab' && (
                 <div>
-                  <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
-                    Dịch: {tag.content.mainTranslation || '—'}
-                  </div>
                   {tag.content.vocabList?.length > 0 && (
                     <div>
                       <div style={{ marginBottom: '10px' }}>
