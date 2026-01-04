@@ -27,7 +27,7 @@ export default function OptionsPanel({ text = '', onRequestPin, pinned }) {
   const containerRef = useRef(null);
   const popupRef = useRef(null);
 
-  const BASE = 'http://localhost:4000/api';
+  const BASE = 'https://nhat-itss-project-be.vercel.app/api';
 
   useEffect(() => {
     function handleDocClick(e) {
