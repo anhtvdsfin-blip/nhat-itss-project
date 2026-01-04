@@ -8,7 +8,6 @@ import howToUse from './images/howToUse_button.png';
 
 function HomePage() {
   const [text, setText] = useState('');
-  const [pinnedTranslation, setPinnedTranslation] = useState(null);
 
   return (
     <div className="app-root">
@@ -28,17 +27,14 @@ function HomePage() {
         </div>
 
         <div className="header-bottom">
-          <Recorder value={text} onChange={setText} onPinTranslation={setPinnedTranslation} />
+          <Recorder value={text} onChange={setText} />
         </div>
       </header>
 
       <main className="main-content">
         <div className="vertical-layout">
           <aside className="options-area">
-            <OptionsPanel
-              text={text}
-              pinned={pinnedTranslation}
-            />
+            <OptionsPanel text={text} />
           </aside>
         </div>
       </main>

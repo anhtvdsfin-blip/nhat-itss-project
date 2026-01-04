@@ -94,6 +94,38 @@ async function callGemini(prompt, model = 'gemini-2.5-flash') {
   return res.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
+// ===== CACHING SYSTEM =====
+const cache = new Map();
+const CACHE_TTL = 3600000; // 1 hour in milliseconds
+
+function generateCacheKey(action, input) {
+  const normalized = sanitizeText(input);
+  return `${action}:${normalized}`;
+}
+
+function getFromCache(key) {
+  if (!cache.has(key)) return null;
+  const entry = cache.get(key);
+  const isExpired = Date.now() - entry.timestamp > CACHE_TTL;
+  if (isExpired) {
+    cache.delete(key);
+    console.log(`[CACHE] Expired: ${key}`);
+    return null;
+  }
+  console.log(`[CACHE HIT] ${key}`);
+  return entry.data;
+}
+
+function setCache(key, data) {
+  cache.set(key, { data, timestamp: Date.now() });
+  console.log(`[CACHE SET] ${key}`);
+}
+
+function clearCache() {
+  cache.clear();
+  console.log('[CACHE] Cleared all cache');
+}
+
 
 // health
 app.get('/api/ping', (req, res) => {
@@ -107,6 +139,13 @@ app.post('/api/classify', async (req, res) => {
   const sentences = splitSentences(cleaned);
   if (!sentences.length) {
     return res.status(400).json({ error: 'No text provided' });
+  }
+
+  // Check cache first
+  const cacheKey = generateCacheKey('classify', rawText);
+  const cachedResult = getFromCache(cacheKey);
+  if (cachedResult) {
+    return res.json(cachedResult);
   }
 
   // Gemini classification path
@@ -135,7 +174,9 @@ app.post('/api/classify', async (req, res) => {
           })
           .filter((item) => item.original);
         if (sentencesResult.length) {
-          return res.json({ sentences: sentencesResult, provider: 'gemini' });
+          const result = { sentences: sentencesResult, provider: 'gemini' };
+          setCache(cacheKey, result);
+          return res.json(result);
         }
       }
       console.error('Gemini classify parse failed: unexpected format');
@@ -167,12 +208,21 @@ app.post('/api/translate', async (req, res) => {
   const text = sanitizeText(rawText);
   if (!text) return res.status(400).json({ error: 'No text provided' });
 
+  // Check cache first
+  const cacheKey = generateCacheKey('translate', rawText);
+  const cachedResult = getFromCache(cacheKey);
+  if (cachedResult) {
+    return res.json(cachedResult);
+  }
+
   if (GEMINI_KEY) {
     try {
       const gPrompt = `Dịch đoạn sau từ tiếng Nhật sang tiếng Việt. Chỉ trả về phần dịch tiếng Việt, giữ nguyên dấu câu:\n\n${text}`;
       const giResp = await callGemini(gPrompt, 'gemini-2.5-flash');
       if (giResp && giResp.trim()) {
-        return res.json({ jp: text, vi: giResp.trim(), provider: 'gemini' });
+        const result = { jp: text, vi: giResp.trim(), provider: 'gemini' };
+        setCache(cacheKey, result);
+        return res.json(result);
       }
     } catch (err) {
       console.error('Gemini translate failed:', err.message || err);
@@ -187,12 +237,18 @@ app.post('/api/translate', async (req, res) => {
       format: 'text'
     }, { headers: { 'accept': 'application/json' } });
     const vi = ltRes?.data?.translatedText;
-    if (vi) return res.json({ jp: text, vi, provider: 'libretranslate' });
+    if (vi) {
+      const result = { jp: text, vi, provider: 'libretranslate' };
+      setCache(cacheKey, result);
+      return res.json(result);
+    }
   } catch (err) {
     console.error('LibreTranslate failed:', err.message || err);
   }
 
-  return res.json({ jp: text, vi: `Tiếng Việt (server fallback): ${text}`, provider: 'fallback' });
+  const result = { jp: text, vi: `Tiếng Việt (server fallback): ${text}`, provider: 'fallback' };
+  setCache(cacheKey, result);
+  return res.json(result);
 });
 
 // vocab lookup: Gemini -> placeholder fallback
@@ -200,6 +256,13 @@ app.post('/api/vocab/lookup', async (req, res) => {
   const rawInput = req.body && typeof req.body.input === 'string' ? req.body.input : '';
   const sentence = sanitizeText(rawInput);
   if (!sentence) return res.status(400).json({ error: 'No input provided' });
+
+  // Check cache first
+  const cacheKey = generateCacheKey('vocab', rawInput);
+  const cachedResult = getFromCache(cacheKey);
+  if (cachedResult) {
+    return res.json(cachedResult);
+  }
 
   if (GEMINI_KEY) {
     try {
@@ -246,7 +309,9 @@ Yêu cầu:
         );
         if (validVocabList.length > 0) {
           console.log('Sending sentence analysis response (Gemini):', { mainTranslation: parsed.mainTranslation, vocabList: validVocabList, provider: 'gemini' });
-          return res.json({ mainTranslation: parsed.mainTranslation, vocabList: validVocabList, provider: 'gemini' });
+          const result = { mainTranslation: parsed.mainTranslation, vocabList: validVocabList, provider: 'gemini' };
+          setCache(cacheKey, result);
+          return res.json(result);
         }
       }
       console.error('Gemini sentence analysis parse failed: unexpected format');
@@ -281,7 +346,18 @@ Yêu cầu:
   };
 
   console.log('Sending sentence analysis response (fallback):', fallback);
+  setCache(cacheKey, fallback);
   res.json(fallback);
+});
+
+// Cache management endpoint
+app.get('/api/cache/clear', (req, res) => {
+  clearCache();
+  res.json({ ok: true, message: 'Cache cleared' });
+});
+
+app.get('/api/cache/stats', (req, res) => {
+  res.json({ cacheSize: cache.size, cacheTTL: CACHE_TTL });
 });
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));

@@ -36,8 +36,8 @@ function Tag({ title, children, type, onDelete, entering }) {
       </h4>
       <div className="tag-body">{children}</div>
       <div className="tag-actions">
-        {copied && <div className="copy-badge small-copy-badge">Copied!</div>}
-        <button className={`small-icon ${copied ? 'small-icon-copied' : ''}`} type="button" title="Copy" onClick={copyTagText}>
+        {copied && <div className="copy-badge small-copy-badge">コピーしました</div>}
+        <button className={`small-icon ${copied ? 'small-icon-copied' : ''}`} type="button" title="コピー" onClick={copyTagText}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M9 9V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-4" />
             <path d="M5 9H15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z" />
@@ -46,7 +46,7 @@ function Tag({ title, children, type, onDelete, entering }) {
         <button
           className="small-icon"
           type="button"
-          title="Delete"
+          title="削除"
           onClick={onDelete}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -62,7 +62,7 @@ function Tag({ title, children, type, onDelete, entering }) {
   );
 }
 
-export default function OptionsPanel({ text = '', pinned }) {
+export default function OptionsPanel({ text = '' }) {
   const [tags, setTags] = useState([]);
   const [enteringIds, setEnteringIds] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -143,7 +143,7 @@ export default function OptionsPanel({ text = '', pinned }) {
       setEnteringIds(ids => [vocabTag.id, ...ids]);
       setTimeout(() => setEnteringIds(ids => ids.filter(i => i !== vocabTag.id)), 350);
     } catch (e) {
-      setError('Vocab failed: ' + (e.message || e));
+      setError('語彙失敗: ' + (e.message || e));
     }
   };
 
@@ -163,7 +163,7 @@ export default function OptionsPanel({ text = '', pinned }) {
       setEnteringIds(ids => [analysisTag.id, ...ids]);
       setTimeout(() => setEnteringIds(ids => ids.filter(i => i !== analysisTag.id)), 350);
     } catch (e) {
-      setError('Analysis failed: ' + (e.message || e));
+      setError('分析失敗: ' + (e.message || e));
     }
   };
 
@@ -184,7 +184,7 @@ export default function OptionsPanel({ text = '', pinned }) {
       setEnteringIds(ids => [translation.id, ...ids]);
       setTimeout(() => setEnteringIds(ids => ids.filter(i => i !== translation.id)), 350);
     } catch (e) {
-      setError('Translation failed: ' + (e.message || e));
+      setError('翻訳失敗: ' + (e.message || e));
     }
   };
 
@@ -209,7 +209,7 @@ export default function OptionsPanel({ text = '', pinned }) {
       setEnteringIds(ids => [tag.id, ...ids]);
       setTimeout(() => setEnteringIds(ids => ids.filter(i => i !== tag.id)), 350);
     } catch (e) {
-      setError('Vocab lookup failed: ' + (e.message || e));
+      setError('語彙検索失敗: ' + (e.message || e));
     }
   };
 
@@ -220,17 +220,11 @@ export default function OptionsPanel({ text = '', pinned }) {
   return (
     <div className="options-wrapper">
       <div className="options-results">
-        {loading && <div className="loading">Loading...</div>}
+        {loading && <div className="loading">読み込み中...</div>}
         {error && <div className="error">⚠️ {error}</div>}
-        {pinned && (
-          <div className="pinned">
-            <strong>Đã ghim:</strong>
-            <div>{pinned}</div>
-          </div>
-        )}
         <div className="tags-list">
           {tags.length === 0 && !loading && !error && (
-            <div className="empty">Chọn options để hiển thị thẻ...</div>
+            <div className="empty">オプションを選択してカードを表示...</div>
           )}
           {tags.map(tag => (
             <Tag
@@ -243,9 +237,6 @@ export default function OptionsPanel({ text = '', pinned }) {
                 <div>
                   {tag.content.vocabList?.length > 0 && (
                     <div>
-                      <div style={{ marginBottom: '10px' }}>
-                        <strong>Từ vựng quan trọng:</strong>
-                      </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                         {tag.content.vocabList.map((vocab, idx) => (
                           <button
@@ -285,16 +276,16 @@ export default function OptionsPanel({ text = '', pinned }) {
                                   </span>}
                                 </div>
                                 <div style={{ marginBottom: '8px' }}>
-                                  <strong>Nghĩa:</strong> {vocab.meaning}
+                                  <strong>意味:</strong> {vocab.meaning}
                                 </div>
                                 {vocab.synonyms?.length > 0 && (
                                   <div style={{ marginBottom: '8px' }}>
-                                    <strong>Synonyms:</strong> {vocab.synonyms.join(', ')}
+                                    <strong>類義語:</strong> {vocab.synonyms.join(', ')}
                                   </div>
                                 )}
                                 {vocab.examples?.length > 0 && (
                                   <div>
-                                    <strong>Ví dụ:</strong>
+                                    <strong>例:</strong>
                                     <div className="example" style={{ marginTop: '5px' }}>
                                       {vocab.examples.map((ex, exIdx) => (
                                         <div key={exIdx} style={{ marginBottom: '5px' }}>
@@ -313,7 +304,7 @@ export default function OptionsPanel({ text = '', pinned }) {
                     </div>
                   )}
                   {tag.content.provider === 'fallback' && (
-                    <div className="warning">⚠️ Dữ liệu mẫu (thiếu Gemini).</div>
+                    <div className="warning">⚠️ サンプルデータ（Gemini不足）。</div>
                   )}
                 </div>
               )}
@@ -321,19 +312,28 @@ export default function OptionsPanel({ text = '', pinned }) {
                 <div>
                   {tag.content.sentences?.map((item, idx) => (
                     <div key={idx} className="analysis-line">
-                      <div>
-                        <strong>{item.typeVi || item.type || '—'}</strong>
-                        {item.type && item.typeVi && item.typeVi !== item.type && (
-                          <span> ({item.type})</span>
-                        )}
-                        {': '}{item.normalized || item.original}
+                      <div style={{ marginBottom: '8px' }}>
+                        <strong>文の種類：</strong>
+                        <div style={{ marginLeft: '16px', marginTop: '4px' }}>
+                          {item.typeVi || item.type || '—'}
+                          {item.type && item.typeVi && item.typeVi !== item.type && (
+                            <span> ({item.type})</span>
+                          )}
+                        </div>
                       </div>
-                      {item.mainIdea && <div>Main idea: {item.mainIdea}</div>}
-                      {item.actionSuggestion && <div>Suggestion: {item.actionSuggestion}</div>}
+                      {item.actionSuggestion && (
+                        <div style={{ marginBottom: '8px' }}>
+                          <strong>学生がすべきこと：</strong>
+                          <div style={{ marginLeft: '16px', marginTop: '4px' }}>
+                            {item.actionSuggestion}
+                          </div>
+                        </div>
+                      )}
+                      {item.mainIdea && <div style={{ marginTop: '8px' }}>主な考え: {item.mainIdea}</div>}
                     </div>
                   ))}
                   {tag.content.provider === 'fallback' && (
-                    <div className="warning">⚠️ Kết quả mẫu (thiếu Gemini).</div>
+                    <div className="warning">⚠️ サンプル結果（Gemini不足）。</div>
                   )}
                 </div>
               )}
@@ -342,7 +342,7 @@ export default function OptionsPanel({ text = '', pinned }) {
                   <div><em>{tag.content.jp}</em></div>
                   <div>{tag.content.vi}</div>
                   {tag.content.provider && tag.content.provider !== 'gemini' && (
-                    <div className="provider-note">Nguồn: {tag.content.provider}</div>
+                    <div className="provider-note">ソース: {tag.content.provider}</div>
                   )}
                 </div>
               )}
@@ -365,7 +365,7 @@ export default function OptionsPanel({ text = '', pinned }) {
         >
           <div className="choose-inner">
             <div className="plus">+</div>
-            <div>Choose options</div>
+            <div>オプションを選択</div>
           </div>
           {optionsVisible && (
             <div

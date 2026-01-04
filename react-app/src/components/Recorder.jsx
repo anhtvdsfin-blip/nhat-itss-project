@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export default function Recorder({ value, onChange, onPinTranslation }) {
+export default function Recorder({ value, onChange }) {
   const recognitionRef = useRef(null);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState(null);
@@ -54,20 +54,17 @@ export default function Recorder({ value, onChange, onPinTranslation }) {
     }
   };
 
-  const handleVerify = () => {
+  const handlePin = () => {
     if (!value || !value.trim()) {
-      setError('No content to verify');
+      setError('No content to pin');
       return;
     }
+    setPinned(!pinned);
     setError(null);
-    if (typeof onPinTranslation === 'function') {
-      onPinTranslation(value.trim());
-    }
   };
 
   const clearText = () => {
     onChange('');
-    onPinTranslation && onPinTranslation(null);
     setCopied(false);
   };
 
@@ -138,17 +135,6 @@ export default function Recorder({ value, onChange, onPinTranslation }) {
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 20h4.6a2 2 0 0 0 1.4-.6l9.4-9.4a2 2 0 0 0 0-2.8l-2.6-2.6a2 2 0 0 0-2.8 0L4 14.6A2 2 0 0 0 3.4 16v4Z" />
               <path d="M13.5 6.5 17.5 10.5" />
-            </svg>
-          </button>
-
-          <button
-            className="icon-btn"
-            onClick={handleVerify}
-            title="Verify"
-            aria-label="Verify content"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 12.5 9 17l11-11" />
             </svg>
           </button>
 

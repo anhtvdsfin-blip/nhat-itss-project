@@ -183,7 +183,6 @@ html, body, #root {
   stroke: #b00020;
 }
 
-
 .icon-btn-copied svg {
   stroke-width: 1.8;
   stroke: #0b8457;
@@ -502,6 +501,11 @@ html, body, #root {
   min-height: 0; /* allow proper flexbox overflow behavior */
   overflow-y: auto;
   padding-right: 8px;
+  scrollbar-width: none; /* Firefox */
+}
+
+.options-area::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 /* Header input styling: pink frame, white background, black text */
