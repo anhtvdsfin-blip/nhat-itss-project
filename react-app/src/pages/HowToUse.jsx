@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import howToUsePage from '../images/HowtoUse.png';
+import howToUsePage from '../images/howtoUse.png';
 
 export default function HowToUse() {
   return (
